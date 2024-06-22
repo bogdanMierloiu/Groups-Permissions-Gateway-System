@@ -1,0 +1,194 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.2.xsd">
+
+    <!--    Create app_user table-->
+    <changeSet id="user-initialization" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="app_user"/>
+            </not>
+        </preConditions>
+        <createTable tableName="app_user">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="surname" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uuid" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="app_user" indexName="userIndex">
+            <column name="uuid"/>
+        </createIndex>
+    </changeSet>
+
+    <!--    Create role table-->
+    <changeSet id="role-initialization" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="role"/>
+            </not>
+        </preConditions>
+        <createTable tableName="role">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(32)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="uuid" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="role" indexName="roleIndex">
+            <column name="uuid"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add foreign key constraint between user and role tables -->
+    <changeSet id="foreign-key-user-role" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_role_user"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="app_user"
+                                 baseColumnNames="role_id"
+                                 constraintName="fk_role_user"
+                                 referencedTableName="role"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <!--    Insert member and admin roles-->
+    <changeSet id="insert-role" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="role"/>
+            <not>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM role WHERE name = 'MEMBER';
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM role WHERE name = 'ADMIN';
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <insert tableName="role">
+            <column name="id" valueNumeric="1"/>
+            <column name="name" value="ADMIN"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="role">
+            <column name="id" valueNumeric="2"/>
+            <column name="name" value="MEMBER"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+    </changeSet>
+
+    <!--ENSURE MINIM 1 ADMIN TO APPLICATION WHEN START SCRIPTS-->
+    <changeSet id="assign-admin-role" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM app_user WHERE email = 'bogdan.mierloiu01@gmail.com'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="app_user">
+            <column name="id" valueNumeric="9999999999"/>
+            <column name="email" value="bogdan.mierloiu01@gmail.com"/>
+            <column name="name" value="Bogdan"/>
+            <column name="surname" value="Mierloiu"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+            <column name="role_id" valueNumeric="1"/>
+        </insert>
+    </changeSet>
+
+    <!--    Create group table-->
+    <changeSet id="group-init" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="groups"/>
+            </not>
+        </preConditions>
+        <createTable tableName="groups">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(35)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(512)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="parent_id" type="bigint">
+                <constraints nullable="true"/>
+            </column>
+            <column name="enabled" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+            <column name="inherit_permissions" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uuid" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="groups"
+                                 baseColumnNames="parent_id"
+                                 constraintName="fk_group_parent_id"
+                                 referencedTableName="groups"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <createIndex tableName="groups" indexName="groupIndex">
+            <column name="uuid"/>
+        </createIndex>
+    </changeSet>
+
+
+    <!--    Create GROUPS_USERS table-->
+    <changeSet id="group-users-init" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="groups_users"/>
+            </not>
+        </preConditions>
+        <createTable tableName="groups_users">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="group_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="groups_users"
+                                 baseColumnNames="group_id"
+                                 constraintName="fk_group_id"
+                                 referencedTableName="groups"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="groups_users"
+                                 baseColumnNames="user_id"
+                                 constraintName="fk_user_id"
+                                 referencedTableName="app_user"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+    <include file="classpath:db.changelog/changelog-group-permissions.xml"/>
+
+</databaseChangeLog>

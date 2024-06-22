@@ -1,0 +1,179 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.2.xsd">
+
+    <!--    Create permissions Table    -->
+    <changeSet id="create-permissions-table" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="permissions"/>
+            </not>
+        </preConditions>
+        <createTable tableName="permissions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="endpoint_url" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="uuid" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(512)"/>
+        </createTable>
+    </changeSet>
+
+
+    <!--    Create Actions Table  -->
+    <changeSet id="create-actions-table" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="actions"/>
+            </not>
+        </preConditions>
+        <createTable tableName="actions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uuid" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!--    Insert actions  -->
+    <changeSet id="insert-actions" author="madalina+bogdan">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="actions"/>
+        </preConditions>
+        <insert tableName="actions">
+            <column name="id" valueNumeric="1"/>
+            <column name="name" value="GET"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="actions">
+            <column name="id" valueNumeric="2"/>
+            <column name="name" value="POST"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="actions">
+            <column name="id" valueNumeric="3"/>
+            <column name="name" value="PATCH"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="actions">
+            <column name="id" valueNumeric="4"/>
+            <column name="name" value="DELETE"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+    </changeSet>
+
+
+    <!--    Create groups_permissions Table    -->
+    <changeSet id="map-group-permission" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="groups_permissions"/>
+            </not>
+        </preConditions>
+        <createTable tableName="groups_permissions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="group_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="permission_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uuid" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="groups_permissions"
+                                 baseColumnNames="group_id"
+                                 constraintName="fk_group_permission_relation"
+                                 referencedTableName="groups"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="groups_permissions"
+                                 baseColumnNames="permission_id"
+                                 constraintName="fk_permission_groups_relation"
+                                 referencedTableName="permissions"
+                                 referencedColumnNames="id"
+        />
+    </changeSet>
+
+    <!--    Create group_permission_action_relation table many-to-many-->
+    <changeSet id="map-group-permission-with-action" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="group_permission_action_relation"/>
+            </not>
+        </preConditions>
+        <createTable tableName="group_permission_action_relation">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="group_permission_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+        <addForeignKeyConstraint baseTableName="group_permission_action_relation"
+                                 baseColumnNames="group_permission_id"
+                                 constraintName="fk_group_permission_action_relation"
+                                 referencedTableName="groups_permissions"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="group_permission_action_relation"
+                                 baseColumnNames="action_id"
+                                 constraintName="fk_action_group_permission_relation"
+                                 referencedTableName="actions"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <!--    Insert permissions  -->
+    <changeSet id="insert-permissions" author="bogdan">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="permissions"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM permissions;
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="permissions">
+            <column name="id" valueNumeric="1"/>
+            <column name="name" value="MANAGE GROUPS"/>
+            <column name="endpoint_url" value="/groups"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="permissions">
+            <column name="id" valueNumeric="2"/>
+            <column name="name" value="MANAGE USERS IN GROUPS"/>
+            <column name="endpoint_url" value="/group-users"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="permissions">
+            <column name="id" valueNumeric="3"/>
+            <column name="name" value="MANAGE PERMISSIONS FOR GROUP"/>
+            <column name="endpoint_url" value="/group-permissions"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+        <insert tableName="permissions">
+            <column name="id" valueNumeric="4"/>
+            <column name="name" value="PERMISSION TEST"/>
+            <column name="endpoint_url" value="/permission-test"/>
+            <column name="uuid" valueComputed="gen_random_uuid()"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
